@@ -12,6 +12,9 @@ namespace MarkiBot.Dialogs
     [Serializable]
     public class RootDialog : IDialog<object>
     {
+        private const string FlightsOption = "Flights";
+
+        private const string HotelsOption = "Hotels";
         public async Task StartAsync(IDialogContext context)
         {
             context.Wait(MessageReceivedAsync);
@@ -29,6 +32,10 @@ namespace MarkiBot.Dialogs
             }
             else
             {
+                //if (activity.Text.ToLower().Contains("help") || activity.Text.ToLower().Contains("support") || activity.Text.ToLower().Contains("problem"))
+                //{
+                //    await context.Forward(new SupportDialog(), this.ResumeAfterSupportDialog, activity, CancellationToken.None);
+                //}
                 if (activity.Text.ToLower().Contains("show") || activity.Text.ToLower().Contains("product") || activity.Text.ToLower().Contains("find"))
                 {
                     await context.PostAsync("Sure.");
@@ -60,6 +67,7 @@ namespace MarkiBot.Dialogs
                     //string QuestionPrompt = "Please let me know if you want me to help you out to search any product.";
                     //PromptOptions<string> options = new PromptOptions<string>(QuestionPrompt, "", "", questions, 1); // Overrided the PromptOptions Constructor.
                     //PromptDialog.Choice<string>(context, NextQuestionAsync, options);
+                    //this.ShowOptions(context);
                 }
 
             }
@@ -90,12 +98,12 @@ namespace MarkiBot.Dialogs
             }
         }
 
-        private async Task ResumeAfterProductDialog(IDialogContext context, IAwaitable<int> result)
+        public async Task ResumeAfterProductDialog(IDialogContext context, IAwaitable<int> result)
         {
             context.Wait(this.MessageReceivedAsync);
         }
 
-        private async Task RedirectToproductContentGenerator(IDialogContext context, string product)
+        public async Task RedirectToproductContentGenerator(IDialogContext context, string product)
         {
             string category = product;
             var resultMessage = context.MakeMessage();
@@ -105,31 +113,96 @@ namespace MarkiBot.Dialogs
             List<HeroCard> herocardList = null;
             ProductContentClass pc = new ProductContentClass();
 
-            switch (product.ToString())
+            switch (product.ToLower().ToString())
             {
-                case "Amplifiers":
+                case "amplifier":
                     herocardList = pc.GenerateAmplifiersContent();
                     break;
-                case "Balun":
+                case "balun":
                     herocardList = pc.GenerateBalunContent();
                     break;
-                case "Bias Tees":
+                case "bias tees":
 
                     break;
-                case "Couplers":
+                case "coupler":
 
                     break;
-                case "Equalizers":
+                case "equalizer":
 
+                    break;
+                default:
+                    herocardList = null;
                     break;
             }
-            foreach (HeroCard hc in herocardList)
+            if (herocardList != null)
             {
-                resultMessage.Attachments.Add(hc.ToAttachment());
+                foreach (HeroCard hc in herocardList)
+                {
+                    resultMessage.Attachments.Add(hc.ToAttachment());
+                }
             }
+            else
+                return;
+            
             await context.PostAsync(resultMessage);
             context.Wait(this.MessageReceivedAsync);
         }
 
+        #region Exisitng Sample code
+        private void ShowOptions(IDialogContext context)
+        {
+            PromptDialog.Choice(context, this.OnOptionSelected, new List<string>() { FlightsOption, HotelsOption }, "Are you looking for a flight or a hotel?", "Not a valid option", 3);
+        }
+
+        private async Task OnOptionSelected(IDialogContext context, IAwaitable<string> result)
+        {
+            try
+            {
+                string optionSelected = await result;
+
+                switch (optionSelected)
+                {
+                    case FlightsOption:
+                        context.Call(new FlightsDialog(), this.ResumeAfterOptionDialog);
+                        break;
+
+                    case HotelsOption:
+                        context.Call(new HotelsDialog(), this.ResumeAfterOptionDialog);
+                        break;
+                }
+            }
+            catch (TooManyAttemptsException ex)
+            {
+                await context.PostAsync($"Ooops! Too many attemps :(. But don't worry, I'm handling that exception and you can try again!");
+
+                context.Wait(this.MessageReceivedAsync);
+            }
+        }
+
+        private async Task ResumeAfterSupportDialog(IDialogContext context, IAwaitable<int> result)
+        {
+            var ticketNumber = await result;
+
+            await context.PostAsync($"Thanks for contacting our support team. Your ticket number is {ticketNumber}.");
+            context.Wait(this.MessageReceivedAsync);
+        }
+
+        private async Task ResumeAfterOptionDialog(IDialogContext context, IAwaitable<object> result)
+        {
+            try
+            {
+                var message = await result;
+            }
+            catch (Exception ex)
+            {
+                await context.PostAsync($"Failed with message: {ex.Message}");
+            }
+            finally
+            {
+                context.Wait(this.MessageReceivedAsync);
+            }
+        }
+        #endregion
+        
     }
 }

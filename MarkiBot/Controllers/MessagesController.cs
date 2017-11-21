@@ -5,6 +5,7 @@ using System.Web.Http;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 using System.Configuration;
+using System;
 
 namespace MarkiBot
 {
@@ -26,7 +27,8 @@ namespace MarkiBot
                 //isTypingReply.Type = ActivityTypes.Typing;
                 //await connector.Conversations.ReplyToActivityAsync(isTypingReply);
 
-                await Conversation.SendAsync(activity, () => new Dialogs.RootDialog());
+                //await Conversation.SendAsync(activity, () => new Dialogs.RootDialog());
+                await Conversation.SendAsync(activity, () => new Dialogs.IntelligentDialog(activity));
             }
             else
             {
@@ -36,7 +38,7 @@ namespace MarkiBot
             return response;
         }
 
-        private Activity HandleSystemMessage(Activity message)
+        private async Task<Activity> HandleSystemMessage(Activity message)
         {
             if (message.Type == ActivityTypes.DeleteUserData)
             {
@@ -60,6 +62,12 @@ namespace MarkiBot
             {
                 // Handle add/remove from contact lists
                 // Activity.From + Activity.Action represent what happened
+                if (message.Action == "add")
+                {
+                    var reply = message.CreateReply("WELCOME!!!");
+                    ConnectorClient connector = new ConnectorClient(new Uri(message.ServiceUrl));
+                    await connector.Conversations.ReplyToActivityAsync(reply);
+                }
             }
             else if (message.Type == ActivityTypes.Typing)
             {
